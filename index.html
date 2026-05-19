@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gerador de Receita</title>
+
   <style>
     :root {
       color-scheme: light;
@@ -84,12 +85,8 @@
       background: radial-gradient(circle, rgba(255, 255, 255, 0.9), transparent 60%);
     }
 
-    .highlight {
-      color: var(--primary-strong);
-      font-weight: 700;
-    }
-
     .card {
+      position: relative;
       background: rgba(255, 255, 255, 0.95);
       border: 1px solid rgba(124, 58, 237, 0.12);
       border-radius: 28px;
@@ -97,6 +94,7 @@
       padding: 36px;
       margin-bottom: 30px;
       backdrop-filter: blur(18px);
+      z-index: 1;
     }
 
     .card::before {
@@ -224,11 +222,8 @@
 
     .result-section {
       margin-top: 24px;
-    }
-
-    .result-section h2 {
-      margin-top: 0;
-      color: #1e293b;
+      position: relative;
+      z-index: 1;
     }
 
     .result-block {
@@ -238,6 +233,11 @@
       padding: 26px;
       margin-bottom: 20px;
       box-shadow: 0 18px 36px rgba(15, 23, 42, 0.07);
+    }
+
+    .result-block h2 {
+      margin-top: 0;
+      color: #1e293b;
     }
 
     .result-block h3 {
@@ -276,26 +276,36 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <header>
       <img class="hero-image" src="/padeiro.jfif" alt="Padeiro sorrindo" />
       <h1>Gerador de Receita</h1>
-      <p class="subtitle">Informe pelo menos 3 ingredientes e gere uma receita estruturada em JSON usando a API do Flask.</p>
+      <p class="subtitle">
+        Informe pelo menos 3 ingredientes e gere uma receita estruturada usando IA.
+      </p>
     </header>
 
     <div class="card">
       <label for="ingredientInput">Ingrediente</label>
+
       <div class="field-row">
         <input id="ingredientInput" type="text" placeholder="Ex: tomate, cebola, ovo" />
         <button id="addIngredientBtn" class="btn-secondary">Adicionar ingrediente</button>
       </div>
+
       <ul id="ingredientList" class="ingredient-list"></ul>
+
       <div class="actions">
         <button id="generateBtn" class="btn-primary" disabled>Gerar receita</button>
         <button id="clearBtn" class="btn-secondary">Limpar tudo</button>
       </div>
-      <p class="hint">Digite pelo menos 3 ingredientes. A API do Flask irá gerar a receita em formato estruturado.</p>
+
+      <p class="hint">
+        Digite pelo menos 3 ingredientes. A API irá gerar uma receita organizada.
+      </p>
+
       <p class="error-message" id="errorText"></p>
     </div>
 
@@ -315,12 +325,14 @@
 
     function updateUi() {
       ingredientList.innerHTML = '';
+
       ingredientes.forEach((ingrediente, index) => {
         const li = document.createElement('li');
         li.textContent = ingrediente;
 
         const removeButton = document.createElement('button');
         removeButton.textContent = 'Remover';
+
         removeButton.addEventListener('click', () => {
           ingredientes.splice(index, 1);
           updateUi();
@@ -359,23 +371,29 @@
       const ingredientesBlock = document.createElement('div');
       ingredientesBlock.className = 'result-block';
       ingredientesBlock.innerHTML = '<h3>Ingredientes</h3>';
+
       const ingredientesUl = document.createElement('ul');
+
       receita.ingredientes.forEach(item => {
         const itemLi = document.createElement('li');
         itemLi.textContent = item;
         ingredientesUl.appendChild(itemLi);
       });
+
       ingredientesBlock.appendChild(ingredientesUl);
 
       const modoPreparoBlock = document.createElement('div');
       modoPreparoBlock.className = 'result-block';
       modoPreparoBlock.innerHTML = '<h3>Modo de preparo</h3>';
+
       const preparoOl = document.createElement('ol');
+
       receita.modo_de_preparo.forEach(passo => {
         const passoLi = document.createElement('li');
         passoLi.textContent = passo;
         preparoOl.appendChild(passoLi);
       });
+
       modoPreparoBlock.appendChild(preparoOl);
 
       resultArea.appendChild(title);
@@ -385,10 +403,12 @@
 
     addIngredientBtn.addEventListener('click', () => {
       const valor = ingredientInput.value.trim();
+
       if (!valor) {
         showError('Digite um ingrediente antes de adicionar.');
         return;
       }
+
       ingredientes.push(valor);
       ingredientInput.value = '';
       updateUi();
@@ -415,31 +435,25 @@
         });
 
         let data = null;
+
         try {
           data = await response.json();
         } catch (e) {
-          showError('Resposta inválida do servidor.');
+          showError('Resposta inválida do servidor. A rota pode estar errada ou o servidor retornou HTML em vez de JSON.');
           resultArea.innerHTML = '';
           return;
         }
 
         if (!response.ok) {
-          if (response.status === 504) {
-            showError('Tempo esgotado: o servidor demorou para responder. Tente novamente mais tarde.');
-          } else if (response.status === 502) {
-            showError(data.message || 'Bad gateway: resposta inválida do provedor.');
-          } else if (response.status === 500) {
-            showError(data.message || 'Erro interno no servidor: verifique logs.');
-          } else {
-            showError(data.message || 'Erro ao gerar a receita.');
-          }
+          showError(data.message || 'Erro ao gerar a receita.');
           resultArea.innerHTML = '';
           return;
         }
 
         showResult(data);
+
       } catch (error) {
-        showError('Falha de conexão com a API. Verifique se o servidor Flask está rodando.');
+        showError('Falha de conexão com a API. Verifique se o servidor está rodando ou se o deploy foi feito corretamente.');
         resultArea.innerHTML = '';
       }
     });
