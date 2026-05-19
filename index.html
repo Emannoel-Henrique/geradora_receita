@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerador de Receita</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      --primary: #5b21b6;
+      --primary-strong: #7c3aed;
+      --accent: #f59e0b;
+      --surface: #ffffff;
+      --surface-soft: #eef2ff;
+      --text-muted: #475569;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(132, 204, 22, 0.14), transparent 28%),
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.15), transparent 20%),
+        radial-gradient(circle at bottom left, rgba(236, 72, 153, 0.12), transparent 24%),
+        linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle at 20% 20%, rgba(251, 191, 36, 0.22), transparent 22%),
+        radial-gradient(circle at 80% 15%, rgba(59, 130, 246, 0.2), transparent 20%),
+        radial-gradient(circle at 50% 80%, rgba(168, 85, 247, 0.14), transparent 18%);
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    .container {
+      position: relative;
+      width: min(1080px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+
+    header {
+      position: relative;
+      text-align: center;
+      margin-bottom: 34px;
+      z-index: 1;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.4rem, 4vw, 3.6rem);
+      letter-spacing: -0.06em;
+      color: var(--primary);
+      text-shadow: 0 12px 28px rgba(124, 58, 237, 0.15);
+    }
+
+    .subtitle {
+      margin: 16px auto 0;
+      max-width: 680px;
+      color: var(--text-muted);
+      line-height: 1.8;
+      font-size: 1rem;
+    }
+
+    .hero-image {
+      width: 160px;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 28px;
+      border: 6px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 22px 60px rgba(124, 58, 237, 0.22);
+      margin: 0 auto 22px;
+      display: block;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.9), transparent 60%);
+    }
+
+    .highlight {
+      color: var(--primary-strong);
+      font-weight: 700;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(124, 58, 237, 0.12);
+      border-radius: 28px;
+      box-shadow: 0 32px 90px rgba(15, 23, 42, 0.11);
+      padding: 36px;
+      margin-bottom: 30px;
+      backdrop-filter: blur(18px);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent 55%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 14px;
+      font-weight: 800;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 18px 20px;
+      border: 1px solid #cbd5e1;
+      border-radius: 18px;
+      font-size: 1rem;
+      color: #0f172a;
+      background: #f8fafc;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: rgba(124, 58, 237, 0.55);
+      box-shadow: 0 0 0 6px rgba(124, 58, 237, 0.12);
+      transform: translateY(-1px);
+    }
+
+    button {
+      border: none;
+      border-radius: 18px;
+      padding: 16px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      min-width: 160px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-strong), #2563eb);
+      color: #ffffff;
+      box-shadow: 0 18px 44px rgba(37, 99, 235, 0.22);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #f8fafc, #e0f2fe);
+      color: #1e293b;
+    }
+
+    .ingredient-list {
+      margin-top: 24px;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 14px;
+    }
+
+    .ingredient-list li {
+      background: linear-gradient(135deg, #eff6ff, #f8fafc);
+      border: 1px solid rgba(96, 165, 250, 0.18);
+      padding: 16px 18px;
+      border-radius: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .ingredient-list button {
+      background: #f43f5e;
+      color: #ffffff;
+      padding: 10px 14px;
+      border-radius: 14px;
+      min-width: auto;
+      font-size: 0.95rem;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+    }
+
+    .actions {
+      margin-top: 26px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .hint {
+      margin-top: 16px;
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      line-height: 1.7;
+    }
+
+    .result-section {
+      margin-top: 24px;
+    }
+
+    .result-section h2 {
+      margin-top: 0;
+      color: #1e293b;
+    }
+
+    .result-block {
+      background: linear-gradient(135deg, #ffffff, #f8fafc);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 26px;
+      padding: 26px;
+      margin-bottom: 20px;
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.07);
+    }
+
+    .result-block h3 {
+      margin-top: 0;
+      color: #4338ca;
+    }
+
+    .result-block ul,
+    .result-block ol {
+      margin: 0;
+      padding-left: 20px;
+      color: #334155;
+    }
+
+    .result-block p {
+      margin: 10px 0;
+      color: #334155;
+    }
+
+    .error-message {
+      color: #dc2626;
+      font-weight: 700;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 720px) {
+      .field-row,
+      .actions {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <img class="hero-image" src="/padeiro.jfif" alt="Padeiro sorrindo" />
+      <h1>Gerador de Receita</h1>
+      <p class="subtitle">Informe pelo menos 3 ingredientes e gere uma receita estruturada em JSON usando a API do Flask.</p>
+    </header>
+
+    <div class="card">
+      <label for="ingredientInput">Ingrediente</label>
+      <div class="field-row">
+        <input id="ingredientInput" type="text" placeholder="Ex: tomate, cebola, ovo" />
+        <button id="addIngredientBtn" class="btn-secondary">Adicionar ingrediente</button>
+      </div>
+      <ul id="ingredientList" class="ingredient-list"></ul>
+      <div class="actions">
+        <button id="generateBtn" class="btn-primary" disabled>Gerar receita</button>
+        <button id="clearBtn" class="btn-secondary">Limpar tudo</button>
+      </div>
+      <p class="hint">Digite pelo menos 3 ingredientes. A API do Flask irá gerar a receita em formato estruturado.</p>
+      <p class="error-message" id="errorText"></p>
+    </div>
+
+    <div id="resultArea" class="result-section"></div>
+  </div>
+
+  <script>
+    const ingredientInput = document.getElementById('ingredientInput');
+    const addIngredientBtn = document.getElementById('addIngredientBtn');
+    const ingredientList = document.getElementById('ingredientList');
+    const generateBtn = document.getElementById('generateBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const resultArea = document.getElementById('resultArea');
+    const errorText = document.getElementById('errorText');
+
+    const ingredientes = [];
+
+    function updateUi() {
+      ingredientList.innerHTML = '';
+      ingredientes.forEach((ingrediente, index) => {
+        const li = document.createElement('li');
+        li.textContent = ingrediente;
+
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'Remover';
+        removeButton.addEventListener('click', () => {
+          ingredientes.splice(index, 1);
+          updateUi();
+        });
+
+        li.appendChild(removeButton);
+        ingredientList.appendChild(li);
+      });
+
+      generateBtn.disabled = ingredientes.length < 3;
+      errorText.textContent = '';
+    }
+
+    function showError(message) {
+      errorText.textContent = message;
+    }
+
+    function showResult(data) {
+      resultArea.innerHTML = '';
+
+      if (!data || !data.dados_receita) {
+        resultArea.innerHTML = '<p>Nenhum resultado disponível.</p>';
+        return;
+      }
+
+      const receita = data.dados_receita;
+
+      const title = document.createElement('div');
+      title.className = 'result-block';
+      title.innerHTML = `
+        <h2>${receita.nome_da_receita}</h2>
+        <p><strong>Porções:</strong> ${receita.porcoes}</p>
+        <p><strong>Tempo de preparo:</strong> ${receita.tempo_de_preparo}</p>
+      `;
+
+      const ingredientesBlock = document.createElement('div');
+      ingredientesBlock.className = 'result-block';
+      ingredientesBlock.innerHTML = '<h3>Ingredientes</h3>';
+      const ingredientesUl = document.createElement('ul');
+      receita.ingredientes.forEach(item => {
+        const itemLi = document.createElement('li');
+        itemLi.textContent = item;
+        ingredientesUl.appendChild(itemLi);
+      });
+      ingredientesBlock.appendChild(ingredientesUl);
+
+      const modoPreparoBlock = document.createElement('div');
+      modoPreparoBlock.className = 'result-block';
+      modoPreparoBlock.innerHTML = '<h3>Modo de preparo</h3>';
+      const preparoOl = document.createElement('ol');
+      receita.modo_de_preparo.forEach(passo => {
+        const passoLi = document.createElement('li');
+        passoLi.textContent = passo;
+        preparoOl.appendChild(passoLi);
+      });
+      modoPreparoBlock.appendChild(preparoOl);
+
+      resultArea.appendChild(title);
+      resultArea.appendChild(ingredientesBlock);
+      resultArea.appendChild(modoPreparoBlock);
+    }
+
+    addIngredientBtn.addEventListener('click', () => {
+      const valor = ingredientInput.value.trim();
+      if (!valor) {
+        showError('Digite um ingrediente antes de adicionar.');
+        return;
+      }
+      ingredientes.push(valor);
+      ingredientInput.value = '';
+      updateUi();
+    });
+
+    clearBtn.addEventListener('click', () => {
+      ingredientes.length = 0;
+      resultArea.innerHTML = '';
+      ingredientInput.value = '';
+      updateUi();
+    });
+
+    generateBtn.addEventListener('click', async () => {
+      errorText.textContent = '';
+      resultArea.innerHTML = '<p>Gerando receita...</p>';
+
+      try {
+        const response = await fetch('/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ingredientes })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showError(data.message || 'Erro ao gerar a receita.');
+          resultArea.innerHTML = '';
+          return;
+        }
+
+        showResult(data);
+      } catch (error) {
+        showError('Falha de conexão com a API. Verifique se o servidor Flask está rodando.');
+        resultArea.innerHTML = '';
+      }
+    });
+
+    ingredientInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        addIngredientBtn.click();
+      }
+    });
+
+    updateUi();
+  </script>
+</body>
+</html>
