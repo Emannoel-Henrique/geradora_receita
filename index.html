@@ -414,10 +414,25 @@
           body: JSON.stringify({ ingredientes })
         });
 
-        const data = await response.json();
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (e) {
+          showError('Resposta inválida do servidor.');
+          resultArea.innerHTML = '';
+          return;
+        }
 
         if (!response.ok) {
-          showError(data.message || 'Erro ao gerar a receita.');
+          if (response.status === 504) {
+            showError('Tempo esgotado: o servidor demorou para responder. Tente novamente mais tarde.');
+          } else if (response.status === 502) {
+            showError(data.message || 'Bad gateway: resposta inválida do provedor.');
+          } else if (response.status === 500) {
+            showError(data.message || 'Erro interno no servidor: verifique logs.');
+          } else {
+            showError(data.message || 'Erro ao gerar a receita.');
+          }
           resultArea.innerHTML = '';
           return;
         }

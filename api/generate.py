@@ -1,6 +1,8 @@
 import os
 import json
+import threading
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -9,12 +11,23 @@ from config import RECEITA_SCHEMA, SYSTEM_INSTRUCTION
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_API_KEY)
 
 app = Flask(__name__)
+CORS(app)
+
+# Tempo máximo (segundos) para aguardar a resposta do modelo em ambiente serverless
+TIMEOUT_SECONDS = 8
 
 
-def generate_recipe(ingredientes):
+def _call_gemini(ingredientes):
+    """Faz a chamada ao client do Gemini e retorna a string JSON.
+    Pode levantar exceção que será tratada pelo chamador.
+    """
+    # Inicializa o cliente com a chave (cria por chamada para evitar problemas de import em ambientes serverless)
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY não está definida no ambiente")
+    client = genai.Client(api_key=GEMINI_API_KEY)
+
     lista_ingredientes = ", ".join(ingredientes)
     conteudo_prompt = f"Crie uma receita utilizando obrigatoriamente estes ingredientes: {lista_ingredientes}."
 
@@ -57,18 +70,48 @@ def generate():
             "message": "Você precisa fornecer no mínimo 3 ingredientes."
         }), 400
 
-    try:
-        receita_json_string = generate_recipe(ingredientes)
-        receita_estruturada = json.loads(receita_json_string)
+    # Resultado da thread
+    result = {}
 
+    def worker():
+        try:
+            result_text = _call_gemini(ingredientes)
+            result['text'] = result_text
+        except Exception as e:
+            result['error'] = str(e)
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+    thread.join(TIMEOUT_SECONDS)
+
+    if thread.is_alive():
         return jsonify({
-            "status": "success",
-            "ingredientes_enviados": ingredientes,
-            "dados_receita": receita_estruturada
-        }), 200
+            "status": "error",
+            "message": f"Timeout: a geração demorou mais que {TIMEOUT_SECONDS} segundos. Tente novamente ou use backend com maior timeout."
+        }), 504
 
+    if 'error' in result:
+        return jsonify({
+            "status": "error",
+            "message": f"Erro ao gerar a receita: {result['error']}"
+        }), 500
+
+    try:
+        receita_estruturada = json.loads(result['text'])
     except Exception as e:
         return jsonify({
             "status": "error",
-            "message": f"Erro ao gerar a receita: {str(e)}"
-        }), 500
+            "message": f"Resposta do modelo inválida: {str(e)}",
+            "raw": result.get('text')
+        }), 502
+
+    return jsonify({
+        "status": "success",
+        "ingredientes_enviados": ingredientes,
+        "dados_receita": receita_estruturada
+    }), 200
+
+
+if __name__ == "__main__":
+    # Para testes locais (não usado pela Vercel)
+    app.run(debug=True, host='0.0.0.0', port=5001)
